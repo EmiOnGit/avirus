@@ -1,4 +1,5 @@
 use std::io::Cursor;
+use std::io::Result as IoResult;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -53,5 +54,10 @@ impl Header {
             width: read_little_endian(),
             height: read_little_endian(),
         }
+    }
+    pub fn make_headerdata(&self) -> IoResult<Vec<u8>> {
+        let mut headerdata: Vec<u8> = Vec::new();
+
+        todo!()
     }
 }

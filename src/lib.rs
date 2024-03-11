@@ -101,7 +101,7 @@ impl AVI {
     /// `framedata`. This is normally called automatically in `AVI::output` and
     /// uses the current state of `Frames`.
     #[allow(clippy::cast_possible_truncation)]
-    pub fn overwrite(&mut self, framedata: &[u8]) {
+    pub fn overwrite(&mut self, headerdata: &[u8], framedata: &[u8]) {
         let mut new_stream: Vec<u8> = Vec::new();
         new_stream.extend_from_slice(&self.stream[..self.frames.pos_of_movi - 4]);
         let mut buf = [0u8; 4];
