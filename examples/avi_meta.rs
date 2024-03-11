@@ -3,6 +3,8 @@
 //! Usage: `cargo run --example avi_meta AVIFILE`
 
 extern crate avirus;
+use std::fs;
+
 use avirus::AVI;
 
 fn main() {
@@ -11,10 +13,8 @@ fn main() {
         eprintln!("Usage: {} AVIFILE", args[0]);
         std::process::exit(1);
     }
-
-    let avi = AVI::new(&args[1]).expect("Unable to read AVI file. Error");
-
-    for frame in &avi.frames.meta {
-        println!("{frame:?}");
-    }
+    let p = &args[1];
+    let content = fs::read(p).expect("Unable to read AVI file.");
+    let avi = AVI::new(&content).expect("Unable to read AVI file. Error");
+    println!("{:?}", avi.header);
 }

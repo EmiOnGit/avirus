@@ -1,101 +1,10 @@
-use byteorder::{BigEndian, ByteOrder, LittleEndian};
-use frame::Frame;
-use std::io::Cursor;
-use std::io::Read;
-use std::io::Result as IoResult;
-
 /// The `Frames` type.
-pub struct Frames {
-    /// A private field to keep track of the position of a particular header
-    pub pos_of_movi: usize,
-    /// The frame list, represented by a `Vec` of [`Frame`](../frame/struct.Frame.html).
-    pub meta: Vec<Frame>,
+pub struct Frames<'a> {
+    pub data: &'a [u8],
 }
 
-impl Frames {
-    /// Loads a byte stream and does further processing on it to populate
-    /// `Frames::meta`.
-    /// Normally, this function is called automatically upon calling `AVI::new`.
-    ///
-    /// # Errors
-    /// Two possible errors can be encountered in this function.
-    /// * errors raised by `io::Cursor::seek`, see [`io::Seek::seek`](https://doc.rust-lang.org/std/io/trait.Seek.html#tymethod.seek) for more information
-    /// * errors raised by `io::Cursor::read_exact`, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn new(file: &[u8], pos_of_movi: usize) -> Self {
-        let meta: Vec<_> = file.chunks_exact(16).map(Frame::new).collect();
-        Self { pos_of_movi, meta }
-    }
-
-    /// This method builds a byte stream based on `Frames::meta`.
-    /// This is normally called automatically on [`AVI::output`](../struct.AVI.html#method.output).
-    ///
-    /// # Errors
-    /// Errors can be encountered during reading bytes, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information.
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn make_framedata(&mut self, stream: &[u8]) -> IoResult<Vec<u8>> {
-        let mut framedata: Vec<u8> = Vec::new();
-        framedata.reserve(stream.len());
-        let mut reader = Cursor::new(&stream);
-        let mut buf = [0u8; 4];
-        for frame in &mut self.meta {
-            reader.set_position(self.pos_of_movi as u64 + u64::from(frame.offset) + 8);
-            let mut actual_frame = vec![0u8; frame.length as usize];
-            reader.read_exact(&mut actual_frame)?;
-            frame.offset = (self.pos_of_movi as u32 + frame.offset + frame.length) + 12;
-            frame.length = actual_frame.len() as u32;
-            BigEndian::write_u32_into(&[frame.id], &mut buf);
-            framedata.extend_from_slice(&buf);
-            LittleEndian::write_u32_into(&[frame.length], &mut buf);
-            framedata.extend_from_slice(&buf);
-            framedata.extend_from_slice(&actual_frame);
-            if frame.length % 2 == 1 {
-                framedata.push(0u8);
-            }
-        }
-        Ok(framedata)
-    }
-
-    /// A helper method to remove all keyframes except the first in `Frames::meta`
-    /// It also attempts to sync audio and video by adding an additional pframe
-    /// for every iframe it removes. `Frames::meta` will be overwritten by this
-    /// method.
-    ///
-    /// # Examples
-    /// ```
-    /// use avirus::AVI;
-    /// use avirus::frame::Frame;
-    ///
-    /// let mut avi = AVI::new("path_to.avi").unwrap();
-    /// avi.frames.remove_keyframes();
-    /// ```
-    pub fn remove_keyframes(&mut self) {
-        // this function is subject for removal, as it's more of a
-        // fun helper function more than anything. people who wish to have more
-        // fine-grained control is likely to reimplement this with slight changes anyway.
-        let mut data: Vec<Frame> = Vec::new();
-        let mut lastpframe: Option<Frame> = None;
-        for frame in &self.meta {
-            if frame.is_iframe() {
-                lastpframe = Some(*frame);
-                break;
-            }
-        }
-        for frame in &self.meta {
-            if frame.is_audioframe() {
-                data.push(*frame);
-            } else if frame.is_pframe() {
-                data.push(*frame);
-                lastpframe = Some(*frame);
-            } else if frame.is_iframe() {
-                // this clause is here to keep audio synced up to the video
-                // instead of dropping iframes, we replace them with the last
-                // found pframe.
-                if let Some(ref value) = lastpframe {
-                    data.push(*value);
-                }
-            }
-        }
-        self.meta = data;
+impl<'a> Frames<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self { data }
     }
 }
