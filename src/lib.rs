@@ -6,6 +6,7 @@ pub mod header;
 
 use self::frames::Frames;
 use byteorder::{ByteOrder, LittleEndian};
+use header::Header;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::Cursor;
@@ -18,6 +19,7 @@ use std::io::{Error, ErrorKind};
 pub struct AVI {
     /// A Frames object. See [Frames](frames/struct.Frames.html) for more.
     pub frames: Frames,
+    pub header: Header,
 }
 
 impl AVI {
@@ -43,7 +45,7 @@ impl AVI {
 
         let mut rdr = Cursor::new(&file_data);
         let mut pos_of_movi: usize = 0;
-        let mut pos_of_hdrl: usize = 0;
+        let mut pos_of_header: usize = 0;
         rdr.seek(SeekFrom::Start(12))?;
         let mut buf = [0u8; 4];
         rdr.read_exact(&mut buf)?;
@@ -55,7 +57,7 @@ impl AVI {
                 pos_of_movi = rdr.position() as usize - 4;
             }
             if buf == *b"hdrl" {
-                pos_of_hdrl = rdr.position() as usize - 4;
+                pos_of_header = rdr.position() as usize + 4;
             }
             rdr.seek(SeekFrom::Current(i64::from(s) - 4))?;
             rdr.read_exact(&mut buf)?;
@@ -63,7 +65,8 @@ impl AVI {
         rdr.read_exact(&mut buf)?;
         let s = LittleEndian::read_u32(&buf) + rdr.position() as u32;
         let frames = Frames::new(&file_data[rdr.position() as usize..s as usize], pos_of_movi)?;
-        Ok(Self { frames })
+        let header = Header::new(&file_data[pos_of_header..pos_of_header + 11 * 4]);
+        Ok(Self { frames, header })
     }
 
     /// Constructs a binary AVI file from an AVI type.
