@@ -1,36 +1,31 @@
-# avirus
 
-`avirus` is a library for manipulating AVI files for purposes such as glitch art.
+# avirus
+This is a fork of the `https://github.com/chinatsu/avirus` repository.
+A lot of internals are rewritten to enable `no_std` and `no_alloc` support.
+
 
 ```toml,ignore
 [dependencies]
-avirus = "0.2.4"
+avirus = { git="https://github.com/EmiOnGit/avirus" }
 ```
 
 ## Examples
 
-`avirus::AVI` takes an existing AVI file and loads it into memory for manipulation. `avirus::frames` exposes a `meta` field, which holds simple structures with metadata about a frame. This field can be iterated over, and modified to create odd effects in the output file. When the AVI file's `output()` function is called, a new file will be rebuilt with the modified metadata.
-
+`avirus::Avi` takes an byte buffer containing a valid avi file and allows direct read operations on the data without any extra allocations.
 ```rust
-extern crate avirus;
 
-use avirus::AVI;
-use avirus::frame::Frame;
+use avirus::Avi;
 
 fn main() {
-    let mut avi = AVI::new("sample.avi").unwrap();
-    let mut new_meta: Vec<Frame> = Vec::new();
-    for frame in &mut avi.frames.meta {
-        if frame.is_pframe() || frame.is_audioframe() {
-            for _ in 0..3 {
-                new_meta.push(*frame);
-            }
-        }
-        else {
-            new_meta.push(*frame);
-        }
+    let content: Vec<u8> = fs::read("sample_file.avi").expect("Unable to read file.");
+    // Create a `Avi` struct by referencing a buffer.
+    // Can fail if the buffer doesn't contain valid data.
+    let mut avi = Avi::new(&content).unwrap();
+    // The header of a avi contains meta informations.
+    println!("frame count: {}", avi.header.total_frames());
+    // Iteration over the frames is also possible.
+    for frame in &avi.frames {
+        println!("bytes of frame: {}", frame.length());
     }
-    avi.frames.meta = new_meta;
-    avi.output("sample_output.avi").unwrap();
 }
 ```

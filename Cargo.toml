@@ -1,12 +1,13 @@
 [package]
 name = "avirus"
 version = "0.2.4"
-authors = ["kentd"]
+authors = ["emi"]
 
-description = "A Rust library for manipulating AVI files for purposes such as glitch art."
-repository = "https://github.com/chinatsu/avirus/"
+description = "A crate for reading AVI files with no_std support."
+repository = "https://github.com/emiongit/avirus/"
 readme = "README.md"
 keywords = ["multimedia", "video"]
 license-file = "LICENSE"
 [dependencies]
+
 byteorder = {version = "1",default-features = false}
