@@ -11,28 +11,17 @@ use byteorder::{ByteOrder, LittleEndian};
 use cursor::{Cursor, Seek};
 use header::Header;
 
-/// The `AVI` type.
-pub struct AVI<'a> {
+/// The `Avi` type.
+pub struct Avi<'a> {
     /// A Frames object. See [Frames](frames/struct.Frames.html) for more.
     pub frames: Frames<'a>,
+    /// A Header object. See [Header](header/struct.Header.html) for more.
     pub header: Header<'a>,
 }
 
-impl<'a> AVI<'a> {
-    /// Loads a new `IoResult<AVI>` from an AVI file.
-    ///
-    /// # Examples
-    /// ```
-    /// use avirus::AVI;
-    ///
-    /// let mut avi = AVI::new("path_to.avi").unwrap();
-    /// ```
-    ///
-    /// # Errors
-    /// Several possible IO-related errors may be encountered in this function.
-    /// * if `filename` does not already exist, see [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.open) for more details
-    /// * if a read error occurs during the reading of `filename`, see [`io::Read::read`](https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read) for more details
-    /// * if expected headers in the byte stream are not found, [`io::ErrorKind::InvalidData`](https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidData) will be encountered
+impl<'a> Avi<'a> {
+    /// Creates a new Avi.
+    /// Returns `None` if the data is not a valid avi file
     pub fn new(data: &'a [u8]) -> Option<Self> {
         if !is_formatted(data) {
             return None;

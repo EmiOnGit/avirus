@@ -5,7 +5,7 @@
 extern crate avirus;
 use std::fs;
 
-use avirus::AVI;
+use avirus::Avi;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -13,10 +13,14 @@ fn main() {
         eprintln!("Usage: {} AVIFILE", args[0]);
         std::process::exit(1);
     }
-    let p = &args[1];
-    let content = fs::read(p).expect("Unable to read AVI file.");
-    let avi = AVI::new(&content).expect("Unable to read AVI file. Error");
-    println!("{:?}", avi.header);
-    println!("w: {}", avi.header.width());
-    println!("h: {}", avi.header.height());
+    let path = &args[1];
+    let content = fs::read(path).expect("Unable to read file.");
+    let avi = Avi::new(&content).expect("no valid AVI file");
+    println!("header: {:?}", avi.header);
+    println!("width: {}", avi.header.width());
+    println!("height: {}", avi.header.height());
+    println!("frame count : {}", avi.header.total_frames());
+    for frame in &avi.frames {
+        println!("bytes of frame: {}", frame.length());
+    }
 }
