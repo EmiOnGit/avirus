@@ -1,15 +1,15 @@
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 
 const AVIIF_KEYFRAME: u32 = 0x0000_0010;
-
+pub(crate) const FRAME_SIZE: usize = 16;
 /// The `Frame` type. This is the lowest level type
 /// in the AVI file, ignoring the codec level.
 #[derive(Clone, Copy, Debug)]
 pub struct Frame<'a> {
-    data: &'a [u8; 16],
+    data: &'a [u8; FRAME_SIZE],
 }
 impl<'a> Frame<'a> {
-    pub fn new(bytes: &'a [u8; 16]) -> Self {
+    pub fn new(bytes: &'a [u8; FRAME_SIZE]) -> Self {
         Self { data: bytes }
     }
     pub fn id(&self) -> u32 {
@@ -32,10 +32,7 @@ impl<'a> Frame<'a> {
     pub fn length(&self) -> u32 {
         LittleEndian::read_u32(&self.data[12..16])
     }
-    /// This function outputs the `Frame` as a `[u8; 16]`.
-
     /// This function returns a boolean which indicates that this frame is a video frame.
-    #[must_use]
     pub fn is_videoframe(&self) -> bool {
         let id = self.id_as_u8_array();
         &id[2..4] == b"db" || &id[2..4] == b"dc"
@@ -49,7 +46,6 @@ impl<'a> Frame<'a> {
 
     /// This function returns a boolean which indicates that this frame is a key frame
     /// (hereby known as an iframe).
-    #[must_use]
     pub fn is_iframe(&self) -> bool {
         if self.is_videoframe() {
             return self.flag() & AVIIF_KEYFRAME != 0;
@@ -58,8 +54,6 @@ impl<'a> Frame<'a> {
     }
 
     /// This function returns a boolean which indicates that this frame is a delta frame
-    /// (hereby known as a pframe).
-    #[must_use]
     pub fn is_pframe(&self) -> bool {
         if self.is_videoframe() {
             return self.flag() & AVIIF_KEYFRAME == 0;
