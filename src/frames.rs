@@ -26,7 +26,7 @@ impl Frames {
     /// * errors raised by `io::Cursor::seek`, see [`io::Seek::seek`](https://doc.rust-lang.org/std/io/trait.Seek.html#tymethod.seek) for more information
     /// * errors raised by `io::Cursor::read_exact`, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information
     #[allow(clippy::cast_possible_truncation)]
-    pub fn new(file: &Vec<u8>) -> IoResult<Self> {
+    pub fn new(file: &[u8]) -> IoResult<Self> {
         let mut rdr = Cursor::new(&file);
 
         let mut pos_of_movi: usize = 0;
@@ -55,7 +55,7 @@ impl Frames {
         }
 
         Ok(Self {
-            stream: file.clone(),
+            stream: file.to_vec(),
             pos_of_movi,
             meta,
         })
