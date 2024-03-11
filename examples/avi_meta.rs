@@ -17,4 +17,6 @@ fn main() {
     let content = fs::read(p).expect("Unable to read AVI file.");
     let avi = AVI::new(&content).expect("Unable to read AVI file. Error");
     println!("{:?}", avi.header);
+    println!("w: {}", avi.header.width());
+    println!("h: {}", avi.header.height());
 }

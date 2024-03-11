@@ -9,14 +9,9 @@ pub struct Frame<'a> {
     data: &'a [u8; 16],
 }
 impl<'a> Frame<'a> {
-    /// This function reads a `&[u8]`, reads four chunks of 4 and returns a `Frame`.
-    /// It is expected that `id`, `flag`, `offset`, and `length` are in the correct order
-    /// in the input file above.
-    #[must_use]
     pub fn new(bytes: &'a [u8; 16]) -> Self {
         Self { data: bytes }
     }
-    /// Specifies a four-character code corresponding to the chunk ID of a data chunk in the file. See [stream data ('movi' list)](https://docs.microsoft.com/en-us/windows/desktop/directshow/avi-riff-file-reference#stream-data-movi-list) for more information.
     pub fn id(&self) -> u32 {
         BigEndian::read_u32(&self.data[0..4])
     }
@@ -47,7 +42,6 @@ impl<'a> Frame<'a> {
     }
 
     /// This function returns a boolean which indicates that this frame is an audio frame.
-    #[must_use]
     pub fn is_audioframe(&self) -> bool {
         let id = self.id_as_u8_array();
         &id[2..4] == b"wb"

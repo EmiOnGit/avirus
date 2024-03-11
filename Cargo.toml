@@ -8,6 +8,5 @@ repository = "https://github.com/chinatsu/avirus/"
 readme = "README.md"
 keywords = ["multimedia", "video"]
 license-file = "LICENSE"
-
 [dependencies]
-byteorder = "1"
+byteorder = {version = "1",default-features = false}
