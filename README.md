@@ -1,7 +1,8 @@
 
 # avirus
-This is a fork of the `https://github.com/chinatsu/avirus` repository.
-A lot of internals are rewritten to enable `no_std` and `no_alloc` support.
+This is a fork of the https://github.com/chinatsu/avirus repository.
+
+A lot of internals have been rewritten to enable `no_std` and `no_alloc` support.
 
 
 ```toml,ignore
@@ -20,7 +21,7 @@ fn main() {
     let content: Vec<u8> = fs::read("sample_file.avi").expect("Unable to read file.");
     // Create a `Avi` struct by referencing a buffer.
     // Can fail if the buffer doesn't contain valid data.
-    let mut avi = Avi::new(&content).unwrap();
+    let avi = Avi::new(&content).unwrap();
     // The header of a avi contains meta informations.
     println!("frame count: {}", avi.header.total_frames());
     // Iteration over the frames is also possible.
