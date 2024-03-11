@@ -37,10 +37,32 @@ impl AVI {
     /// * if expected headers in the byte stream are not found, [`io::ErrorKind::InvalidData`](https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.InvalidData) will be encountered
     pub fn new(filename: &str) -> IoResult<Self> {
         let mut f = File::open(filename)?;
-        let mut buf: Vec<u8> = Vec::new();
-        f.read_to_end(&mut buf)?;
-        is_formatted(&buf)?;
-        let frames = Frames::new(&buf)?;
+        let mut file_data: Vec<u8> = Vec::new();
+        f.read_to_end(&mut file_data)?;
+        is_formatted(&file_data)?;
+
+        let mut rdr = Cursor::new(&file_data);
+        let mut pos_of_movi: usize = 0;
+        let mut pos_of_hdrl: usize = 0;
+        rdr.seek(SeekFrom::Start(12))?;
+        let mut buf = [0u8; 4];
+        rdr.read_exact(&mut buf)?;
+        while buf == *b"LIST" || buf == *b"JUNK" {
+            rdr.read_exact(&mut buf)?;
+            let s = LittleEndian::read_u32(&buf);
+            rdr.read_exact(&mut buf)?;
+            if buf == *b"movi" {
+                pos_of_movi = rdr.position() as usize - 4;
+            }
+            if buf == *b"hdrl" {
+                pos_of_hdrl = rdr.position() as usize - 4;
+            }
+            rdr.seek(SeekFrom::Current(i64::from(s) - 4))?;
+            rdr.read_exact(&mut buf)?;
+        }
+        rdr.read_exact(&mut buf)?;
+        let s = LittleEndian::read_u32(&buf) + rdr.position() as u32;
+        let frames = Frames::new(&file_data[rdr.position() as usize..s as usize], pos_of_movi)?;
         Ok(Self { frames })
     }
 

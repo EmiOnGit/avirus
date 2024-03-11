@@ -1,10 +1,8 @@
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use frame::Frame;
-use std::io::prelude::*;
 use std::io::Cursor;
 use std::io::Read;
 use std::io::Result as IoResult;
-use std::io::SeekFrom;
 
 /// The `Frames` type.
 pub struct Frames {
@@ -26,34 +24,8 @@ impl Frames {
     /// * errors raised by `io::Cursor::seek`, see [`io::Seek::seek`](https://doc.rust-lang.org/std/io/trait.Seek.html#tymethod.seek) for more information
     /// * errors raised by `io::Cursor::read_exact`, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information
     #[allow(clippy::cast_possible_truncation)]
-    pub fn new(file: &[u8]) -> IoResult<Self> {
-        let mut rdr = Cursor::new(&file);
-
-        let mut pos_of_movi: usize = 0;
-
-        rdr.seek(SeekFrom::Start(12))?;
-        let mut buf = [0u8; 4];
-        rdr.read_exact(&mut buf)?;
-        while buf == *b"LIST" || buf == *b"JUNK" {
-            rdr.read_exact(&mut buf)?;
-            let s = LittleEndian::read_u32(&buf);
-            rdr.read_exact(&mut buf)?;
-            if buf == *b"movi" {
-                pos_of_movi = rdr.position() as usize - 4;
-            }
-            rdr.seek(SeekFrom::Current(i64::from(s) - 4))?;
-            rdr.read_exact(&mut buf)?;
-        }
-        rdr.read_exact(&mut buf)?;
-        let s = LittleEndian::read_u32(&buf) + rdr.position() as u32;
-
-        let mut meta: Vec<Frame> = Vec::new();
-        let mut framebuffer = [0u8; 16];
-        while rdr.position() < s.into() {
-            rdr.read_exact(&mut framebuffer)?;
-            meta.push(Frame::new(&framebuffer));
-        }
-
+    pub fn new(file: &[u8], pos_of_movi: usize) -> IoResult<Self> {
+        let meta: Vec<_> = file.chunks_exact(16).map(Frame::new).collect();
         Ok(Self {
             stream: file.to_vec(),
             pos_of_movi,
