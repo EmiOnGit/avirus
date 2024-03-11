@@ -19,6 +19,8 @@ use std::io::{Error, ErrorKind};
 pub struct AVI {
     /// A Frames object. See [Frames](frames/struct.Frames.html) for more.
     pub frames: Frames,
+    /// The byte stream, represented by a `Vec` of `u8`.
+    pub stream: Vec<u8>,
     pub header: Header,
 }
 
@@ -64,9 +66,13 @@ impl AVI {
         }
         rdr.read_exact(&mut buf)?;
         let s = LittleEndian::read_u32(&buf) + rdr.position() as u32;
-        let frames = Frames::new(&file_data[rdr.position() as usize..s as usize], pos_of_movi)?;
+        let frames = Frames::new(&file_data[rdr.position() as usize..s as usize], pos_of_movi);
         let header = Header::new(&file_data[pos_of_header..pos_of_header + 11 * 4]);
-        Ok(Self { frames, header })
+        Ok(Self {
+            frames,
+            header,
+            stream: file_data,
+        })
     }
 
     /// Constructs a binary AVI file from an AVI type.
@@ -85,11 +91,41 @@ impl AVI {
     /// * if an error is encountered during creation of the file, see [`io::File::create`](https://doc.rust-lang.org/std/fs/struct.File.html#method.create) for more details
     /// * if an writing error is encountered during output, see [`io::Write::write`](https://doc.rust-lang.org/std/io/trait.Write.html#tymethod.write) for more details
     pub fn output(&mut self, filename: &str) -> IoResult<()> {
-        let io = self.frames.make_framedata()?;
-        self.frames.overwrite(&io);
+        let io = self.frames.make_framedata(&self.stream)?;
+        self.overwrite(&io);
         let mut f = File::create(filename)?;
-        f.write_all(&self.frames.stream)?;
+        f.write_all(&self.stream)?;
         Ok(())
+    }
+    /// A method which overwrites parts of `AVI::stream` with the input
+    /// `framedata`. This is normally called automatically in `AVI::output` and
+    /// uses the current state of `Frames`.
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn overwrite(&mut self, framedata: &[u8]) {
+        let mut new_stream: Vec<u8> = Vec::new();
+        new_stream.extend_from_slice(&self.stream[..self.frames.pos_of_movi - 4]);
+        let mut buf = [0u8; 4];
+        LittleEndian::write_u32_into(&[4u32], &mut buf);
+        new_stream.extend_from_slice(&buf);
+        new_stream.extend_from_slice(framedata);
+        new_stream.extend_from_slice(b"idx1");
+        LittleEndian::write_u32_into(&[self.frames.meta.len() as u32], &mut buf);
+        new_stream.extend_from_slice(&buf);
+        let mut framecount = 0u32;
+        for frame in &self.frames.meta {
+            new_stream.extend_from_slice(&frame.as_bytes());
+            if frame.is_videoframe() {
+                framecount += 1;
+            }
+        }
+        let eof = new_stream.len() as u32;
+        LittleEndian::write_u32_into(&[eof - 8], &mut buf);
+        new_stream[4..7].copy_from_slice(&buf[..(7 - 4)]);
+
+        LittleEndian::write_u32_into(&[framecount], &mut buf);
+        new_stream[48..51].copy_from_slice(&buf[..(51 - 48)]);
+
+        self.stream = new_stream;
     }
 }
 

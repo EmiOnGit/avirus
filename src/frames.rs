@@ -6,10 +6,8 @@ use std::io::Result as IoResult;
 
 /// The `Frames` type.
 pub struct Frames {
-    /// The byte stream, represented by a `Vec` of `u8`.
-    pub stream: Vec<u8>,
     /// A private field to keep track of the position of a particular header
-    pos_of_movi: usize,
+    pub pos_of_movi: usize,
     /// The frame list, represented by a `Vec` of [`Frame`](../frame/struct.Frame.html).
     pub meta: Vec<Frame>,
 }
@@ -24,13 +22,9 @@ impl Frames {
     /// * errors raised by `io::Cursor::seek`, see [`io::Seek::seek`](https://doc.rust-lang.org/std/io/trait.Seek.html#tymethod.seek) for more information
     /// * errors raised by `io::Cursor::read_exact`, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information
     #[allow(clippy::cast_possible_truncation)]
-    pub fn new(file: &[u8], pos_of_movi: usize) -> IoResult<Self> {
+    pub fn new(file: &[u8], pos_of_movi: usize) -> Self {
         let meta: Vec<_> = file.chunks_exact(16).map(Frame::new).collect();
-        Ok(Self {
-            stream: file.to_vec(),
-            pos_of_movi,
-            meta,
-        })
+        Self { pos_of_movi, meta }
     }
 
     /// This method builds a byte stream based on `Frames::meta`.
@@ -39,10 +33,10 @@ impl Frames {
     /// # Errors
     /// Errors can be encountered during reading bytes, see [`io::Read::read_exact`](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact) for more information.
     #[allow(clippy::cast_possible_truncation)]
-    pub fn make_framedata(&mut self) -> IoResult<Vec<u8>> {
+    pub fn make_framedata(&mut self, stream: &[u8]) -> IoResult<Vec<u8>> {
         let mut framedata: Vec<u8> = Vec::new();
-        framedata.reserve(self.stream.len());
-        let mut reader = Cursor::new(&self.stream);
+        framedata.reserve(stream.len());
+        let mut reader = Cursor::new(&stream);
         let mut buf = [0u8; 4];
         for frame in &mut self.meta {
             reader.set_position(self.pos_of_movi as u64 + u64::from(frame.offset) + 8);
@@ -103,36 +97,5 @@ impl Frames {
             }
         }
         self.meta = data;
-    }
-
-    /// A method which overwrites parts of `Frames::stream` with the input
-    /// `framedata`. This is normally called automatically in `AVI::output` and
-    /// uses the current state of `Frames`.
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn overwrite(&mut self, framedata: &[u8]) {
-        let mut new_stream: Vec<u8> = Vec::new();
-        new_stream.extend_from_slice(&self.stream[..self.pos_of_movi - 4]);
-        let mut buf = [0u8; 4];
-        LittleEndian::write_u32_into(&[4u32], &mut buf);
-        new_stream.extend_from_slice(&buf);
-        new_stream.extend_from_slice(framedata);
-        new_stream.extend_from_slice(b"idx1");
-        LittleEndian::write_u32_into(&[self.meta.len() as u32], &mut buf);
-        new_stream.extend_from_slice(&buf);
-        let mut framecount = 0u32;
-        for frame in &self.meta {
-            new_stream.extend_from_slice(&frame.as_bytes());
-            if frame.is_videoframe() {
-                framecount += 1;
-            }
-        }
-        let eof = new_stream.len() as u32;
-        LittleEndian::write_u32_into(&[eof - 8], &mut buf);
-        new_stream[4..7].copy_from_slice(&buf[..(7 - 4)]);
-
-        LittleEndian::write_u32_into(&[framecount], &mut buf);
-        new_stream[48..51].copy_from_slice(&buf[..(51 - 48)]);
-
-        self.stream = new_stream;
     }
 }
