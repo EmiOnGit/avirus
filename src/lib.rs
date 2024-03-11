@@ -2,6 +2,7 @@ extern crate byteorder;
 
 pub mod frame;
 pub mod frames;
+pub mod header;
 
 use self::frames::Frames;
 use byteorder::{ByteOrder, LittleEndian};
